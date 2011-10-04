@@ -2,9 +2,8 @@
 module Board
 ( Board(contents, regions, size)
 , Operation(Add,Multiply,Subtract,Divide)
-, Region
+, Region(cellIndices, restriction)
 , cellInit
-, restriction
 , Restriction(Restriction, function, result, inequalities)
 , Cell(ResolvedCell, UnresolvedCell)
 , CellPos
@@ -15,6 +14,8 @@ module Board
 , zipWithIndex
 , getCellContents
 , setContents
+, fetchCellsContents 
+, testBoard
 ) where
 
 import Data.List
@@ -76,3 +77,22 @@ setContents oldBoard newContents =
 	Board {contents = newContents, regions = regions oldBoard, 
 		size = size oldBoard}
 
+fetchCellsContents :: Board -> [CellPos] -> [[Int]]
+fetchCellsContents myBoard =
+	(map (getCellContents myBoard)) 
+
+testBoard :: Board
+testBoard = 
+  let bContents = contentsInit 4
+      bRegions = testRegions
+  in Board bContents bRegions 4
+  where testRegions = 
+		[ Region [(1,1), (1,2)] $ Restriction Subtract 2 [(1,2)]
+		, Region [(1,3), (1,4)] $ Restriction Divide 2 [(1,2)]
+		, Region [(2,1), (3,1)] $ Restriction Subtract 3 [(1,2)]
+		, Region [(2,2), (2,3)] $ Restriction Multiply 6 [(1,2)]
+		, Region [(2,4), (3,4)] $ Restriction Divide 2 [(1,2)]
+		, Region [(3,2), (3,3), (4,3)] $ Restriction Add 8 [(1,2), (2,3)]
+		, Region [(4,1), (4,2)] $ Restriction Divide 2 [(1,2)]
+		, Region [(4,4)] $ Restriction Add 3 []
+		]

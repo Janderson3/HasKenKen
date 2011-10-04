@@ -1,6 +1,7 @@
 import Data.List
 import Data.Maybe
 import Control.Monad
+import Debug.Trace
 
 import Board
 
@@ -50,7 +51,7 @@ insertCell oldCells (row, col) newCell =
 	let (before, targetRow:after)  = splitAt (row - 1) oldCells
 	    (cellsBefore, _:cellsAfter) = splitAt (col - 1) targetRow
 	    newRow = cellsBefore ++ newCell:cellsAfter
-	    in before ++ newRow:after
+	in before ++ newRow:after
 
 --Called when a cell at CellPos has only one element left and thus
 --it must be that number.
@@ -67,11 +68,13 @@ resolveCell oldCells (row,col) targetNum =
 	where removeNumInRow = (\curRow cells curCol -> 
 				removeNumber cells (curRow, curCol) targetNum)
 --Currently not used.
+{--
 operationToFunction :: Operation -> (Int -> Int -> Int)
 operationToFunction Add = (+)
 operationToFunction Multiply = (*)
 operationToFunction Subtract = (-)
 operationToFunction Divide = div
+--}
 
 --Takes in lists of lists of numbers, returns the lists of numbers
 --which satisfy the given restriction 
@@ -125,3 +128,33 @@ unzipListToLists x [] = x --works even if x is null
 unzipListToLists [] (y:ys) = [y]:(unzipListToLists [] ys)
 unzipListToLists (x:xs) (y:ys) = (y:x):(unzipListToLists xs ys)
 
+refinePartitionsInBoard :: Board -> Maybe Board
+refinePartitionsInBoard myBoard =
+	let listORegions = regions myBoard
+		in foldM refinePartitionInRegion myBoard listORegions
+	      
+refinePartitionInRegion :: Board -> Region -> Maybe Board
+refinePartitionInRegion myBoard myRegion =
+	let curCells = cellIndices myRegion	
+	    orderedContents = fetchCellsContents myBoard curCells
+	    possibleCombos = sequence orderedContents
+	    curRestriction = restriction myRegion
+	    newContents = refinePartitionInList curRestriction possibleCombos
+	    in  liftM  (setContents myBoard) $
+	     	  foldM (\runningBoard 
+	    	       (curPos, inputContents) 
+		       	  -> updateNewContents runningBoard curPos inputContents)
+	    	       (contents myBoard)
+		       (scrambleList $ zip curCells newContents)
+ 	    where scrambleList = sortBy (\(_,xs) (_,ys) -> compare  (length ys) (length xs))
+
+refinePartitionInList :: Restriction -> [[Int]] -> [[Int]] 
+refinePartitionInList restrc partitions = 
+		inverseListSequence $ validPartitions
+				(enforceInequalities partitions restrc)
+				restrc
+
+testRefine :: Maybe Board 
+testRefine =
+	let myB = testBoard
+	in refinePartitionsInBoard  myB
