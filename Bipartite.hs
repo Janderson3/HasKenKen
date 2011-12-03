@@ -1,5 +1,6 @@
 import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive.Tree
+import Data.Graph.Inductive.Query.BFS
 
 
 everyOther :: [a] -> [a] -> [a]
@@ -31,24 +32,41 @@ testGraph =(mkGraph
 	[(1,"Left 1"),(2,"Right 1"),(3,"Left 2"),(4,"Right 2")]
 	[(1,2,()),(1,4,()),(3,2,()),(3,4,())])
 
+flipPaths :: DynGraph gr => gr a b -> [[Node]] -> gr a b		
+flipPaths gra paths = foldl flipPath gra paths
+
+
+
+hopcroftKarp :: DynGraph gr => gr a b -> gr a b
+hopcroftKarp gra =
+	case hopcroftStep gra
+	of Nothing -> gra
+	   Just gra2 -> hopcroftKarp gra2
+	   
+
 {- This function takes a bipartite graph where the odd nodes are
 one set in the bipartite graph, and the even nodes are another also
 all unmatched edges go from odd to even and all matched edges are 
-the ones that travel in the reverse. -}
+the ones that travel in the reverse. the function returns nothing if
+the input graph is optimal-}
 
-{-
-hopcroftStep :: Graph gr => gr a b -> Maybe gr a b
-hopcroftStep aGraph = 
 	--I'm going to use the set names that wikipedia uses
-	let 
-		U = filter odd $ nodes aGraph
-		V = filter even $ nodes aGraph
-		Ufree = filter (\x -> 0 == $ indeg x aGraph) U
-		Vfree = filter (\x -> 0 == $ outdeg x aGraph) V
-		levelsVfree = filter (\(node,_) -> node `elem` Vfree)
-			 $ leveln (zip Ufree $ repeat 0) aGraph
-		F = foldl assembleF  [] levelsVfree
--}
+
+hopcroftStep :: DynGraph gr => gr a b -> Maybe (gr a b)
+hopcroftStep aGraph = 
+	let u = filter odd $ nodes aGraph
+	    v = filter even $ nodes aGraph
+	    ufree = filter (\x -> 0 == indeg aGraph x) u
+	    vfree = filter (\x -> 0 == outdeg aGraph x) v
+	    levelsVfree = filter (\(node,_) -> node `elem` vfree)
+			 $ leveln (zip ufree $ repeat 0) aGraph
+	    f = foldl assembleF  [] levelsVfree
+	    ps = assemblePaths aGraph (snd $ head f) ufree (map fst f)
+	in if null ps
+	   then
+		Nothing
+	   else
+		Just $ flipPaths aGraph ps
 
 
 --Finds a path from a target node to any number of sink nodes
@@ -79,7 +97,33 @@ guidedDFSHelper gra count (x:xs) sinks =
 		(Nothing,_) -> guidedDFSHelper gra count xs sinks
 		something -> something
 
+{- Takes in a graph how far to go, sources and sinks-}
+assemblePaths :: Graph gr => 
+	gr a b -> Int -> [Node] -> [Node] ->[[Node]]
+assemblePaths _ _ [] _ = []
+assemblePaths _ _ _ [] = []
+assemblePaths gra count (v:vs) sinks =
+	case guidedDFS gra count v sinks
+	of
+		(Nothing,_) -> assemblePaths gra count vs sinks
+		(Just something, rgra) ->  something : assemblePaths rgra count vs sinks
 
+flipPath :: DynGraph gr => gr a b -> [Node] -> gr a b 
+flipPath gra (fin:[]) = gra
+flipPath gra (source:sink:rest) = 
+	flipPath (flipEdge gra (source,sink)) (sink:rest)
+	
+
+{- sets label to (), may not be appropriate for all cases -}
+flipEdge :: DynGraph gr => gr a b -> (Node, Node) -> gr a b
+flipEdge gra edge@(source, sink) = insEdge (sink,source,(edgeLabel gra edge)) 
+	$ delEdge edge gra
+
+edgeLabel :: Graph gr => gr a b -> (Node, Node) -> b
+edgeLabel gra (x,y) =
+	thd3.head $ filter (\(src,snk,lab) -> src == x && snk == y) 
+		$ labEdges gra
+		where thd3 (_,_,c) = c
 
 --Assume all the things that come in are free and elements of
 --V
