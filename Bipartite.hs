@@ -1,6 +1,9 @@
 import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive.Tree
 import Data.Graph.Inductive.Query.BFS
+import Data.Graph.Inductive.Query.DFS
+import Debug.Trace
+import Data.Tuple
 
 
 everyOther :: [a] -> [a] -> [a]
@@ -32,10 +35,34 @@ testGraph =(mkGraph
 	[(1,"Left 1"),(2,"Right 1"),(3,"Left 2"),(4,"Right 2")]
 	[(1,2,()),(1,4,()),(3,2,()),(3,4,())])
 
-flipPaths :: DynGraph gr => gr a b -> [[Node]] -> gr a b		
-flipPaths gra paths = foldl flipPath gra paths
+{- Takes a list like bipartiteFromList and returns all the nodes
+which can be in a perfect matching -}
+itosAlgorithm :: [[Int]] -> [[Int]]
+itosAlgorithm inList = 
+	map assembleData [1,3.. (2 * length inList)]
+	where  sccs = partitionEdges inList
+	       assembleData position = map (`div`2) $ 
+			filter even $ 
+			head $ filter (elem position) sccs
 
+{- Returns the sccs of Ito's algorithm-}
+partitionEdges :: [[Int]] -> [[Int]]
+partitionEdges  inList = 
+	scc . insBackEdges . hopcroftKarp $ bipartiteFromList inList
 
+{- Takes in a graph hopcroft karp spits out and puts in
+"back edges" The edges that go from V -> U will have
+edges that go from U ->V -}
+insBackEdges :: DynGraph gr => gr a b -> gr a b
+insBackEdges gra =
+	let v = filter even $ nodes gra
+	    pres = map head $ map (\x -> suc gra x) v
+	    newEdges =  zip pres v
+	in foldl (\gra2 ver@(vert1,vert2) 
+		-> insEdge (vert1,vert2,edgeLabel gra $ swap ver)
+		gra2) 
+		gra
+		newEdges
 
 hopcroftKarp :: DynGraph gr => gr a b -> gr a b
 hopcroftKarp gra =
@@ -108,13 +135,15 @@ assemblePaths gra count (v:vs) sinks =
 		(Nothing,_) -> assemblePaths gra count vs sinks
 		(Just something, rgra) ->  something : assemblePaths rgra count vs sinks
 
+flipPaths :: DynGraph gr => gr a b -> [[Node]] -> gr a b		
+flipPaths gra paths = foldl flipPath gra paths
+
 flipPath :: DynGraph gr => gr a b -> [Node] -> gr a b 
 flipPath gra (fin:[]) = gra
 flipPath gra (source:sink:rest) = 
 	flipPath (flipEdge gra (source,sink)) (sink:rest)
 	
 
-{- sets label to (), may not be appropriate for all cases -}
 flipEdge :: DynGraph gr => gr a b -> (Node, Node) -> gr a b
 flipEdge gra edge@(source, sink) = insEdge (sink,source,(edgeLabel gra edge)) 
 	$ delEdge edge gra
