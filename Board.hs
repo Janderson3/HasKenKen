@@ -16,6 +16,7 @@ module Board
 , setContents
 , fetchCellsContents 
 , testBoard
+, contentsFromCell
 ) where
 
 import Data.List
@@ -71,6 +72,10 @@ getCellContents myBoard (row, col) =
 	in case cell of 
 		UnresolvedCell cont -> cont
 		ResolvedCell cont -> [cont]
+
+contentsFromCell :: Cell -> [Int]
+contentsFromCell (UnresolvedCell cont) = cont
+contentsFromCell (ResolvedCell cont) = [cont]
 
 setContents :: Board -> [[Cell]] -> Board
 setContents oldBoard newContents = 

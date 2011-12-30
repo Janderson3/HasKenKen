@@ -56,7 +56,7 @@ edges that go from U ->V -}
 insBackEdges :: DynGraph gr => gr a b -> gr a b
 insBackEdges gra =
 	let v = filter even $ nodes gra
-	    pres = map head $ map (\x -> suc gra x) v
+	    pres = map head $ filter (not.null) $ map (\x -> suc gra x) v
 	    newEdges =  zip pres v
 	in foldl (\gra2 ver@(vert1,vert2) 
 		-> insEdge (vert1,vert2,edgeLabel gra $ swap ver)

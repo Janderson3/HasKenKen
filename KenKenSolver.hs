@@ -4,6 +4,7 @@ import Control.Monad
 import Debug.Trace
 
 import Board
+--import Bipartite
 
 cellInequalityHelper :: (CellPos, Int) -> [(CellPos,Int)] -> [(Int,Int)] 
 cellInequalityHelper source compareList =
@@ -36,14 +37,21 @@ removeNumber myCells (row, col) removeNum =
 
 updateNewContents :: [[Cell]] -> (Int, Int) -> [Int] -> Maybe [[Cell]]
 updateNewContents myCells position newContents = 
-	if null newContents 
+	if null updateContents 
 		then Nothing
-		else if length newContents == 1
+		else if length updateContents == 1
 			then if not $ isResolvedBoard myCells position
-				then resolveCell myCells position (head newContents)
+				then resolveCell myCells position 
+					(head updateContents)
 				--if It is resolved then we don't need to change
 				else Just myCells
-			else Just $ insertCell myCells position (UnresolvedCell newContents)
+			else Just $ insertCell myCells position 
+				(UnresolvedCell (trace ((show updateContents) ++ " index " ++ show position) updateContents))
+	where updateContents = newContents --`intersect` (cellContents myCells position)
+
+cellContents :: [[Cell]] -> (Int, Int) -> [Int]
+cellContents board (row,col) =
+	contentsFromCell $ board !! (row - 1) !! (col - 1)
 
 
 insertCell :: [[Cell]] -> CellPos -> Cell -> [[Cell]]
@@ -60,7 +68,8 @@ resolveCell oldCells (row,col) targetNum =
 	let size = length oldCells
 	    rows = delete col [1..size]
 	    cols = delete row [1..size]
-	    boardWithNewCell = insertCell oldCells (row,col) (ResolvedCell targetNum)
+	    boardWithNewCell = insertCell oldCells (row,col) 
+	    				(ResolvedCell targetNum)
 	in  foldM (removeNumInRow row) boardWithNewCell cols >>=
 		(liftM transpose)
 		.(\newBoard -> foldM (removeNumInRow col) newBoard rows)
@@ -153,6 +162,14 @@ refinePartitionInList restrc partitions =
 		inverseListSequence $ validPartitions
 				(enforceInequalities partitions restrc)
 				restrc
+
+updateRow :: [[Cell]] -> [[Int]] -> Int -> Maybe [[Cell]]
+updateRow oldBoard newRow rowNum =
+	foldM (\runningBoard (contents, index) -> 
+		updateNewContents runningBoard (rowNum, index) contents)
+			oldBoard $
+			zip newRow [1,2..]
+			
 
 testRefine :: Maybe Board 
 testRefine =
