@@ -4,7 +4,7 @@ import Control.Monad
 import Debug.Trace
 
 import Board
---import Bipartite
+import Bipartite
 
 cellInequalityHelper :: (CellPos, Int) -> [(CellPos,Int)] -> [(Int,Int)] 
 cellInequalityHelper source compareList =
@@ -46,8 +46,8 @@ updateNewContents myCells position newContents =
 				--if It is resolved then we don't need to change
 				else Just myCells
 			else Just $ insertCell myCells position 
-				(UnresolvedCell (trace ((show updateContents) ++ " index " ++ show position) updateContents))
-	where updateContents = newContents --`intersect` (cellContents myCells position)
+				(UnresolvedCell  updateContents)
+	where updateContents = newContents `intersect` (cellContents myCells position)
 
 cellContents :: [[Cell]] -> (Int, Int) -> [Int]
 cellContents board (row,col) =
@@ -66,16 +66,15 @@ insertCell oldCells (row, col) newCell =
 resolveCell :: [[Cell]] -> CellPos -> Int -> Maybe [[Cell]]
 resolveCell oldCells (row,col) targetNum =
 	let size = length oldCells
-	    rows = delete col [1..size]
-	    cols = delete row [1..size]
+	    rows = delete row [1..size]
+	    cols = delete col [1..size]
 	    boardWithNewCell = insertCell oldCells (row,col) 
 	    				(ResolvedCell targetNum)
 	in  foldM (removeNumInRow row) boardWithNewCell cols >>=
 		(liftM transpose)
 		.(\newBoard -> foldM (removeNumInRow col) newBoard rows)
 		.transpose
-	where removeNumInRow = (\curRow cells curCol -> 
-				removeNumber cells (curRow, curCol) targetNum)
+	where removeNumInRow = (\curRow cells curCol -> removeNumber cells (curRow, curCol) targetNum)
 --Currently not used.
 {--
 operationToFunction :: Operation -> (Int -> Int -> Int)
@@ -170,6 +169,33 @@ updateRow oldBoard newRow rowNum =
 			oldBoard $
 			zip newRow [1,2..]
 			
+cellsToContents  :: [[Cell]] -> [[[Int]]]
+cellsToContents inBoard =
+	map (map contentsFromCell) inBoard
+
+zipIndex :: [a] -> [(Int, a)]
+zipIndex = (zip [1..])
+
+perfectMatchFilter :: [[Cell]] -> Maybe [[Cell]]
+perfectMatchFilter inBoard =
+	filterItoRows inBoard >>=
+	justTranspose >>=
+	filterItoRows >>=
+	justTranspose
+	where updateRowDex = (\board (row,contents) -> 
+				updateRow board contents row)
+	      dexedItoRows = (\board -> (zipIndex $
+	      			map itosAlgorithm $ cellsToContents board))
+	      filterItoRows = (\board -> foldM updateRowDex 
+	      				board $ dexedItoRows board)
+justTranspose :: [[a]] -> Maybe [[a]]
+justTranspose list = Just $ transpose list
+
+logicStep :: Board -> Maybe Board
+logicStep inBoard =
+	refinePartitionsInBoard inBoard >>=
+	(\x -> perfectMatchFilter $ contents x) >>=
+	(\y -> return (setContents inBoard y)) 
 
 testRefine :: Maybe Board 
 testRefine =

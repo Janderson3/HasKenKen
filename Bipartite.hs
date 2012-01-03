@@ -1,3 +1,7 @@
+
+module Bipartite
+(itosAlgorithm)where
+
 import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive.Tree
 import Data.Graph.Inductive.Query.BFS
