@@ -197,6 +197,21 @@ logicStep inBoard =
 	(\x -> perfectMatchFilter $ contents x) >>=
 	(\y -> return (setContents inBoard y)) 
 
+solveBoard :: Board -> Maybe Board
+solveBoard mahBoard =
+	let nextBoard = logicStep mahBoard
+	in case nextBoard
+		of Nothing -> Nothing
+		   Just aBoard -> 
+		   	if boardResolved aBoard
+				then Just aBoard
+				else if (aBoard == mahBoard)
+					then boardDFS aBoard
+					else logicStep aBoard >>= solveBoard
+
+boardDFS :: Board -> Maybe Board
+boardDFS board = Nothing
+
 testRefine :: Maybe Board 
 testRefine =
 	let myB = testBoard

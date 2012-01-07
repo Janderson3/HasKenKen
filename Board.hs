@@ -17,6 +17,7 @@ module Board
 , fetchCellsContents 
 , testBoard
 , contentsFromCell
+, boardResolved
 ) where
 
 import Data.List
@@ -26,20 +27,20 @@ import Control.Monad
 data Board = Board { contents :: [[Cell]]
 		   , regions :: [Region]
 		   , size :: Int 
-		   }
+		   } deriving (Eq)
 
 data Operation = Add | Multiply | Subtract | Divide deriving (Eq, Show)
 
 data Region = Region { cellIndices :: [CellPos]
 	 	     , restriction :: Restriction
-		     }
+		     } deriving (Eq)
 
 data Restriction = Restriction { function :: Operation
 			       , result :: Int
 			       , inequalities :: [(Int,Int)]
-			       }	
+			       } deriving(Eq)	
 
-data Cell = ResolvedCell Int | UnresolvedCell  [Int] deriving (Show)
+data Cell = ResolvedCell Int | UnresolvedCell  [Int] deriving (Show, Eq)
 
 type CellPos = (Int, Int)
 
@@ -50,6 +51,10 @@ isResolvedCell _ = False
 isResolvedBoard :: [[Cell]] -> CellPos -> Bool
 isResolvedBoard myBoard (row, col) =
 	isResolvedCell $ myBoard !! (row - 1) !! (col - 1)
+
+boardResolved :: Board -> Bool
+boardResolved inboard = 
+	and $ map and $ map (map isResolvedCell) (contents inboard)
 
 
 cellInit :: Int -> Cell
@@ -101,3 +106,16 @@ testBoard =
 		, Region [(4,1), (4,2)] $ Restriction Divide 2 [(1,2)]
 		, Region [(4,4)] $ Restriction Add 3 []
 		]
+{-
+testBoard' :: Board
+testBoard' =
+    let bContents = contentsInit 9
+        bRegions = testRegions'
+    in Board bContents bRegions 9
+    where testRegions' = 
+    	[Region [(1,1), (2,1)] $ Restriction Divide 4 [(1,2)]
+	, Region [(1,2), (1,3)] $ Restriction Divide 2 [(1,2)]
+	, Region [(1,4), (1,5)] $ Restriction Multiply 90 [(1,2), (1,3), (2,3)]
+	, Region [(1,7), (2,7), (1,8)] $ Restriction Multiply 49 [(1,2), (1,3)]
+	, Region [(1,9), (2,9)] $ Restriction Add 13 [(1,2)]
+	, Region [(2,2), (3,2)] $ Restriction Subtract 2 [(1,2)]-}
